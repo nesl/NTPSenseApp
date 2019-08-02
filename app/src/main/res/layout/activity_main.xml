@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#2D68C4"
+    tools:context="com.nesl.ntpsense.com.nesl.main.MainActivity">
+
+    <CheckBox
+        android:id="@+id/checkBoxAmbient"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="49dp"
+        android:text="Ambient Light Data"
+        android:textColor="#F2A900"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/buttonRecord"
+        app:layout_constraintStart_toStartOf="@+id/checkBoxIMU"
+        app:layout_constraintTop_toBottomOf="@+id/checkBoxIMU" />
+
+    <CheckBox
+        android:id="@+id/checkBoxIMU"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="IMU Data"
+        android:textColor="#F2A900"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/checkBoxAmbient"
+        app:layout_constraintStart_toStartOf="@+id/checkBoxAudio"
+        app:layout_constraintTop_toBottomOf="@+id/checkBoxAudio" />
+
+    <CheckBox
+        android:id="@+id/checkBoxAudio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="18dp"
+        android:layout_marginLeft="18dp"
+        android:checked="false"
+        android:text="Audio Data"
+        android:textColor="#F2A900"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/checkBoxIMU"
+        app:layout_constraintStart_toStartOf="@+id/textView2"
+        app:layout_constraintTop_toBottomOf="@+id/textView2" />
+
+    <Button
+        android:id="@+id/buttonRecord"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="61dp"
+        android:background="#09F012"
+        android:onClick="recordClick"
+        android:text="Start Recording"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/progressBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/checkBoxAmbient" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="81dp"
+        android:layout_marginBottom="26dp"
+        android:text="NTPSense"
+        android:textColor="#F2A900"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:visibility="visible"
+        app:layout_constraintBottom_toTopOf="@+id/textView2"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginLeft="12dp"
+        android:layout_marginBottom="16dp"
+        android:text="Please select which modalities to record:"
+        android:textColor="#F2A900"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:visibility="visible"
+        app:layout_constraintBottom_toTopOf="@+id/checkBoxAudio"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView"
+        tools:visibility="visible" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="27dp"
+        app:layout_constraintBottom_toTopOf="@+id/textViewRecordUpdate"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/buttonRecord"
+        tools:visibility="invisible" />
+
+    <TextView
+        android:id="@+id/textViewRecordUpdate"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:text="Recording in Progress..."
+        android:textColor="#E1940E"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/progressBar"
+        tools:visibility="invisible" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
