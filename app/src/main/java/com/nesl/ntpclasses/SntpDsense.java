@@ -1,21 +1,19 @@
 /*
- * Copyright (C) 2008 The Android Open Source Project
- * Modified  NESL 2018
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Original Code from the Android Open Source Project.
+ * Modified By Sandeep Singh Sandha.
+ * Email: sandha.iitr@gmail.com
  */
+
+/*
+SNTP client used for distributed sensing
+Modification to do multiple NTP requests and selection of offset so as to enable less variability
+and more sync accuracy.
+ */
+
 
 package com.nesl.ntpclasses;
 
+import android.net.TrafficStats;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -26,18 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
-/**
- * {@hide}
- *
- * Simple SNTP client class for retrieving network time.
- *
- * Sample usage:
- * <pre>SntpClient client = new SntpClient();
- * if (client.requestTime("time.foo.com")) {
- *     long now = client.get_ntp_update_sys_time() + SystemClock.elapsedRealtime() - client.get_ntp_update_monotonic_time();
- * }
- * </pre>
- */
+
 public class SntpDsense {
     private static final String TAG = "SntpDsense";
     private static final boolean DBG = true;

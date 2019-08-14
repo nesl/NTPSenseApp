@@ -1,17 +1,26 @@
-package com.nesl.ntpclasses;
+/*
+Author: Sandeep Singh Sandha
+Email: sandha.iitr@gmail.com
+*/
 
+
+package com.nesl.ntpclasses;
 
 import android.os.SystemClock;
 
-public class Dsense {
+
+public class GoodClock {
+
+
+    long period = 15*60*1000;//Default update every 15  minutes
+
 
     SntpDsense client = null;
-    String ntpHost = "17.253.26.253";//"time1.ucla.edu";//"128.97.92.56";//;"17.253.26.253";//"time.apple.com";
+    String ntpHost = "17.253.26.253";
     int timeout = 3000;
 
-    long period = 15*60*1000;//update every 15  minutes
 
-    boolean SntpSuceeded;
+    public boolean SntpSuceeded;
     Thread NTP_update;
     boolean NTP_thread_running=false;
 
@@ -41,7 +50,7 @@ public class Dsense {
     1) Initializing SntpDsense client
     2) Initialize SNTP (NTP) has not been done
      */
-    public Dsense() {
+    public GoodClock() {
 
         try{
             client = new SntpDsense();
@@ -55,7 +64,7 @@ public class Dsense {
             e.printStackTrace();
         }
 
-    }//end Dsense()
+    }//end GoodClock()
 
     //start the dsense library
     /*
@@ -115,10 +124,7 @@ public class Dsense {
             //client.get_ntp_update_monotonic_time(): monotonic system elasped time at instant of NTP offset calcuation.
             //client.getNtp_clockoffset(): offset of system time with NTP server at time of NTP update
             long elapsed_time_since_last_ntp = SystemClock.elapsedRealtime() - curr_ntp_monotonic_time;
-
             long drift_correction = (long)((drift)*(double)(elapsed_time_since_last_ntp));
-
-            //System.out.println("drift_correction is:"+drift_correction);
             now = drift_correction+curr_ntp_offset+curr_ntp_sys_time+elapsed_time_since_last_ntp;
 
         }
@@ -130,6 +136,34 @@ public class Dsense {
         return now;
     }//end long currentTimeMillis
 
+
+    /*
+   Gives the time now in milliseconds based on corrections
+     */
+    public long Now()
+    {
+
+    /*
+    We have to make sure client is not null
+     */
+        if(client==null)
+            return -1;//client not initialized
+
+        long now = -1;
+        try{
+
+            long elapsed_time_since_last_ntp = SystemClock.elapsedRealtime() - curr_ntp_monotonic_time;
+            long drift_correction = (long)((drift)*(double)(elapsed_time_since_last_ntp));
+            now = drift_correction+curr_ntp_offset+curr_ntp_sys_time+elapsed_time_since_last_ntp;
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        return now;
+    }//end long Now
 
     public long getNtp_clockoffset()
     {
@@ -155,7 +189,7 @@ public class Dsense {
             while(true) {
                 try {
 
-                    System.out.println("Dsense Thread is running");
+                    System.out.println("GoodClock Thread is running");
                     SntpSuceeded = client.requestTime(ntpHost, timeout);
 
                     if(SntpSuceeded)
@@ -195,9 +229,6 @@ public class Dsense {
                             long jump_system_time = diff_monotonic-diff_system;
 
                             //note this clock difference will be due to the jump in system time due to correction (NTP or Nitz at the system level)
-                            // System.out.println("Sandeep Clock Difference:"+(jump_system_time));
-
-
                             //we need to check there was no jump in the system time
 
                             if(Math.abs(jump_system_time)<10)//there is an insignificant jump of 10 ms or less.
@@ -256,10 +287,6 @@ public class Dsense {
 
                             }
 
-                            //System.out.println("Sandeep:"+total_ntp_offset_change + ": " + total_ntp_monotonic_time_passed);
-
-                            //drift = 0.0001;
-
 
                         }//end else
 
@@ -281,4 +308,4 @@ public class Dsense {
         }//end run
     };
 
-}//end Dsense
+}//end GoodClock
