@@ -13,6 +13,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
@@ -26,6 +27,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.nesl.ntpclasses.GoodClock;
 import com.nesl.ntpsense.R;
@@ -57,6 +61,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     //GPS Stuff
     private FusedLocationProviderClient fusedLocationClient;
+    private LocationCallback locationCallback;
+    private LocationRequest locationRequest;
+    private int intervalTime = 10;
+    private int maxWaitTime = 30;
+    private  OutputStream gpsOSStream;
+    private OutputStreamWriter gpsOS;
+    private final int FINE_LOCATION_PERMISSION_CODE = 2;
+    private final int COARSE_LOCATION_PERMISSION_CODE = 2;
 
     // NTP Stuff
 
@@ -119,6 +131,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         //cb_audio.setEnabled(false);
         cb_imu = findViewById(R.id.checkBoxIMU);
         cb_ambient = findViewById(R.id.checkBoxAmbient);
+        cb_gps = findViewById(R.id.checkBoxGPS);
         //cb_ambient.setEnabled(false);
 
         // Get default sensors
@@ -139,6 +152,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         {
             e.printStackTrace();
         }
+
+
     }
 
     @Override
@@ -242,10 +257,27 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sensorManager.registerListener(this, mLight, SensorManager.SENSOR_DELAY_NORMAL);
         sensorManager.registerListener(this, mMagnet, SensorManager.SENSOR_DELAY_NORMAL);
         super.onResume();
-        if (requestingLocationUpdates) {
+        if (isRecording) {
             startLocationUpdates();
         }
     }
+
+    private void startLocationUpdates() {
+        // check if permissions are already granted
+        if (ContextCompat.checkSelfPermission( this, Manifest.permission.ACCESS_FINE_LOCATION ) != PackageManager.PERMISSION_GRANTED )
+        {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String [] { Manifest.permission.ACCESS_FINE_LOCATION },
+                    FINE_LOCATION_PERMISSION_CODE
+            );
+        }
+
+        fusedLocationClient.requestLocationUpdates(locationRequest,
+                locationCallback,
+                null /* Looper */);
+    }
+
 
     @Override
     protected void onPause() {
@@ -257,9 +289,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         {
             recordClick(findViewById(R.id.buttonRecord));
         }
+        super.onPause();
+        stopLocationUpdates();
 
     }
-
+    private void stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback);
+        try{
+            gpsOS.flush();
+            gpsOS.close();
+        }catch(IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
     //Function for button record click
     public void recordClick(View v) {
 
@@ -272,8 +315,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             requestPermissions(RECORD_AUDIO_PERMISSION_CODE);
         }
 
+        // check if permissions are already granted
+        if (ContextCompat.checkSelfPermission( this, Manifest.permission.ACCESS_FINE_LOCATION ) != PackageManager.PERMISSION_GRANTED )
+        {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String [] { Manifest.permission.ACCESS_FINE_LOCATION },
+                    FINE_LOCATION_PERMISSION_CODE
+            );
+        }
+
         if(!isRecording) {
-            if(cb_imu.isChecked() || cb_audio.isChecked() || cb_ambient.isChecked()) {
+            if(cb_imu.isChecked() || cb_audio.isChecked() || cb_ambient.isChecked() || cb_gps.isChecked()) {
 
                 //startRecording();
                 Long now = goodClock.Now();
@@ -349,11 +402,65 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     }
 
                 }
+
+                if(cb_gps.isChecked())
+                {
+                    try {
+                        //GPS Stuff:
+                        /** creates file path */
+                        String gpsFileName = "gpsData-" + dateFormatted;
+
+                        /** creates new folders in storage if they do not exist */
+                        File pathParent = new File(Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
+                        if (!pathParent.exists())
+                            pathParent.mkdir();
+                        File pathChild = new File(pathParent + "/gpsData/");
+                        if (!pathChild.exists())
+                            pathChild.mkdir();
+                        locationRequest = new LocationRequest();
+                        locationRequest.setInterval(intervalTime);
+                        locationRequest.setMaxWaitTime(maxWaitTime);
+                        String gpsFilePath = pathChild + "/" + gpsFileName;
+                        gpsOSStream = new FileOutputStream(gpsFilePath + ".csv");
+                        gpsOS = new OutputStreamWriter(gpsOSStream);
+                        locationCallback = new LocationCallback() {
+                            @Override
+                            public void onLocationResult(LocationResult locationResult) {
+                                if (locationResult == null) {
+                                    return;
+                                }
+                                for (Location location : locationResult.getLocations()) {
+                                    // In this example, alpha is calculated as t / (t + dT),
+                                    // where t is the low-pass filter's time-constant and
+                                    // dT is the event delivery rate
+                                    String locationStr = "Lat: "+ location.getLatitude()+", Long: " + location.getLongitude();
+                                    Long now = goodClock.Now();
+                                    Date date = new Date(now);
+                                    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
+                                    formatter.setTimeZone(TimeZone.getTimeZone("PST"));
+                                    String dateFormatted = formatter.format(date);
+                                    try {
+                                        gpsOS.append(dateFormatted + ", " + locationStr + "\n");
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }
+
+                            ;
+                        };
+                        startLocationUpdates();
+                    }catch(IOException e)
+                    {
+                        e.printStackTrace();
+                    }
+                }
                 bt_Record.setText("Stop Recording");
                 bt_Record.setBackgroundColor(Color.RED);
                 cb_imu.setEnabled(false);
                 cb_ambient.setEnabled(false);
                 cb_audio.setEnabled(false);
+                cb_gps.setEnabled(false);
                 pb_Record.setVisibility(View.VISIBLE);
                 tv_recordUpdate.setVisibility(View.VISIBLE);
                 isRecording = true;
@@ -369,6 +476,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             cb_imu.setEnabled(true);
             cb_ambient.setEnabled(true);
             cb_audio.setEnabled(true);
+            cb_gps.setEnabled(true);
             if(cb_imu.isChecked()){
                 try {
                     accelOS.flush();
@@ -402,6 +510,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }catch(IOException e){
                     e.printStackTrace();
                 }
+            }
+            if(cb_gps.isChecked())
+            {
+                    stopLocationUpdates();
             }
 
         }
