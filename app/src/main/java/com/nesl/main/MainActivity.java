@@ -254,10 +254,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     protected void onResume() {
         super.onResume();
-        sensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this, mGyro, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this, mLight, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this, mMagnet, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_GAME);
+        sensorManager.registerListener(this, mGyro, SensorManager.SENSOR_DELAY_GAME);
+        sensorManager.registerListener(this, mLight, SensorManager.SENSOR_DELAY_GAME);
+        sensorManager.registerListener(this, mMagnet, SensorManager.SENSOR_DELAY_GAME);
         super.onResume();
         if (isRecording) {
             startLocationUpdates();
