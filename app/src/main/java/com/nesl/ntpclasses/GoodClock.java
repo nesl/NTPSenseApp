@@ -16,7 +16,7 @@ public class GoodClock {
 
 
     SntpDsense client = null;
-    String ntpHost = "17.253.26.253";
+    String ntpHost = "time.apple.com";//17.253.26.253
     int timeout = 3000;
 
 

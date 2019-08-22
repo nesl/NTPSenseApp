@@ -6,6 +6,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.app.Service;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -48,7 +49,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
+public class MainActivity extends AppCompatActivity implements SensorEventListener  {
 
     /*
      * Sensor Stuff
@@ -63,8 +64,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
     private LocationRequest locationRequest;
-    private int intervalTime = 10;
-    private int maxWaitTime = 30;
+    private int intervalTime = 0;
+    private int maxWaitTime = 1500;
+    private float smallestDisplacement = 3.0f;
     private  OutputStream gpsOSStream;
     private OutputStreamWriter gpsOS;
     private final int FINE_LOCATION_PERMISSION_CODE = 2;
@@ -79,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     //End NTP Time Stuff
 
 
-    
+
     // Audio Stuff
     protected boolean isAudioRecording = false;
     protected final int RECORD_AUDIO_PERMISSION_CODE = 1;
@@ -288,20 +290,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if(isRecording)
         {
             recordClick(findViewById(R.id.buttonRecord));
+            stopLocationUpdates();
         }
         super.onPause();
-        stopLocationUpdates();
+
 
     }
     private void stopLocationUpdates() {
+
         fusedLocationClient.removeLocationUpdates(locationCallback);
-        try{
+        try {
             gpsOS.flush();
             gpsOS.close();
-        }catch(IOException e)
-        {
+        } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
     //Function for button record click
     public void recordClick(View v) {
@@ -420,6 +424,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         locationRequest = new LocationRequest();
                         locationRequest.setInterval(intervalTime);
                         locationRequest.setMaxWaitTime(maxWaitTime);
+                        locationRequest.setSmallestDisplacement(smallestDisplacement);
+                        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
                         String gpsFilePath = pathChild + "/" + gpsFileName;
                         gpsOSStream = new FileOutputStream(gpsFilePath + ".csv");
                         gpsOS = new OutputStreamWriter(gpsOSStream);
@@ -456,6 +462,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     }
                 }
                 bt_Record.setText("Stop Recording");
+                //bt_Record.setText(dateFormatted);
                 bt_Record.setBackgroundColor(Color.RED);
                 cb_imu.setEnabled(false);
                 cb_ambient.setEnabled(false);
