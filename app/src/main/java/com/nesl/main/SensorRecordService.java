@@ -46,6 +46,7 @@ import java.io.OutputStreamWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
@@ -79,6 +80,8 @@ public class SensorRecordService extends Service  implements SensorEventListener
     Used to get the offset and the correct current time
      */
     protected GoodClock goodClock;
+    private String timeZone = "America/Los_Angeles";
+
     //End NTP Time Stuff
 
 
@@ -108,10 +111,10 @@ public class SensorRecordService extends Service  implements SensorEventListener
     private volatile boolean isRecording = false;
 
     // Checkbox status
-    private Boolean cb_audioIsChecked;
-    private Boolean cb_imuIsChecked;
-    private Boolean cb_ambientIsChecked;
-    private Boolean cb_gpsIsChecked;
+    private Boolean cb_audioIsChecked = false;
+    private Boolean cb_imuIsChecked = false;
+    private Boolean cb_ambientIsChecked = false;
+    private Boolean cb_gpsIsChecked = false;
 
     public SensorRecordService() {
     }
@@ -163,16 +166,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
         {
             e.printStackTrace();
         }
-        //Let Goodclock warmup
-        try{
 
-            Thread.sleep(2000);
-        }
-
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
 
         startRecording();
         //stopSelf();
@@ -184,8 +178,25 @@ public class SensorRecordService extends Service  implements SensorEventListener
         //startRecording();
         Long now = goodClock.Now();
         Date date = new Date(now);
+
+
+        while(date.getYear() < 100)//Make sure we get a year greater than 1970
+        {
+            try{
+
+                Thread.sleep(500);
+            }
+
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+            now = goodClock.Now();
+            date = new Date(now);
+        }
+
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
-        formatter.setTimeZone(TimeZone.getTimeZone("PST"));
+        formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
         String dateFormatted = formatter.format(date);
         if (cb_imuIsChecked) {
             try {
@@ -207,6 +218,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 String accelFilePath = pathChild + "/" + accelFileName;
                 accelOSStream = new FileOutputStream(accelFilePath + ".csv");
                 accelOS = new OutputStreamWriter(accelOSStream);
+                Log.i("DEBUG Stuff","Accel file created****");
                 String gyroFilePath = pathChild + "/" + gyroFileName;
                 gyroOSStream = new FileOutputStream(gyroFilePath + ".csv");
                 gyroOS = new OutputStreamWriter(gyroOSStream);
@@ -291,7 +303,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                             Long now = goodClock.Now();
                             Date date = new Date(now);
                             SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
-                            formatter.setTimeZone(TimeZone.getTimeZone("PST"));
+                            formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
                             String dateFormatted = formatter.format(date);
                             try {
                                 gpsOS.append(dateFormatted + ", " + locationStr + "\n");
@@ -309,6 +321,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 e.printStackTrace();
             }
         }
+        isRecording= true;
     }
 
 
@@ -396,7 +409,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                         Long now = goodClock.Now();
                         Date date = new Date(now);
                         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
-                        formatter.setTimeZone(TimeZone.getTimeZone("PST"));
+                        formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
                         String dateFormatted = formatter.format(date);
                         try {
                             accelOS.append(dateFormatted + ", " + accel + "\n");
@@ -414,7 +427,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                         Long now = goodClock.Now();
                         Date date = new Date(now);
                         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
-                        formatter.setTimeZone(TimeZone.getTimeZone("PST"));
+                        formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
                         String dateFormatted = formatter.format(date);
                         try {
                             magnetOS.append(dateFormatted + ", " + magnet + "\n");
@@ -432,7 +445,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                         Long now = goodClock.Now();
                         Date date = new Date(now);
                         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
-                        formatter.setTimeZone(TimeZone.getTimeZone("PST"));
+                        formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
                         String dateFormatted = formatter.format(date);
                         try {
                             gyroOS.append(dateFormatted + ", " + gyro + "\n");
@@ -450,7 +463,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                         Long now = goodClock.Now();
                         Date date = new Date(now);
                         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
-                        formatter.setTimeZone(TimeZone.getTimeZone("PST"));
+                        formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
                         String dateFormatted = formatter.format(date);
                         try {
                             ambientLightOS.append(dateFormatted + ", " + ambientLight + "\n");
@@ -495,7 +508,6 @@ public class SensorRecordService extends Service  implements SensorEventListener
                     RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
             recorder = new AudioRecord(
                     RECORDER_SOURCE, RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING, bufferSize);
-            isRecording = true;
         }
 
         /**
@@ -516,7 +528,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 Long now = goodClock.Now();
                 Date date = new Date(now);
                 SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
-                formatter.setTimeZone(TimeZone.getTimeZone("PST"));
+                formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
                 String dateFormatted = formatter.format(date);
 
                 /** creates new folders in storage if they do not exist */
@@ -536,8 +548,6 @@ public class SensorRecordService extends Service  implements SensorEventListener
 
                 /** unknown */
                 short soundData[] = new short[BufferElementsToRec];
-
-                /** starts recording for 3 secs */
 
                 recorder.startRecording();
                 while (isAudioRecording) {
@@ -583,8 +593,8 @@ public class SensorRecordService extends Service  implements SensorEventListener
          * names file
          */
         private String getFileName() {
-            Date time = new Date(System.currentTimeMillis());
-            return (m_fileName + " " + time);
+
+            return (m_fileName );
         }
 
 
