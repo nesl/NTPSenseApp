@@ -36,6 +36,10 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
 
+import org.zeromq.ZContext;
+import org.zeromq.ZMQ;
+import org.zeromq.ZMQ.Socket;
+
 public class SensorRecordService extends Service  implements SensorEventListener {
 
     public static final String CHANNEL_ID = "ForegroundServiceChannel";
@@ -104,6 +108,11 @@ public class SensorRecordService extends Service  implements SensorEventListener
 
 
 
+    //ZeroMQ Stuff
+    private ZMQ.Context context_=null;
+
+    private ZMQ.Socket socket_ = null;
+
 
     public SensorRecordService() {
     }
@@ -162,6 +171,33 @@ public class SensorRecordService extends Service  implements SensorEventListener
             sensorManager.registerListener(this, mPressure, SensorManager.SENSOR_DELAY_GAME);
 
         }
+
+        //ZeroMQ stuff:
+        /*
+        try  {
+            ZContext context = new ZContext()
+            // Socket to talk to clients
+            ZMQ.Socket socket = context.createSocket(ZMQ.REP);
+            socket.bind("tcp://*:5555");
+
+            while (!Thread.currentThread().isInterrupted()) {
+                // Block until a message is received
+                byte[] reply = socket.recv(0);
+
+                // Print the message
+                System.out.println(
+                        "Received: [" + new String(reply, ZMQ.CHARSET) + "]"
+                );
+
+                // Send a response
+                String response = "Hello, world!";
+                socket.send(response.getBytes(ZMQ.CHARSET), 0);
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }*/
 
 
         //NTP Stuff
