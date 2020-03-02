@@ -1,31 +1,24 @@
 package com.nesl.main;
 
-import android.Manifest;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
-import android.media.AudioFormat;
-import android.media.AudioRecord;
-import android.media.MediaRecorder;
+import android.os.Build;
 import android.os.Environment;
 import android.os.IBinder;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import androidx.core.app.NotificationCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -33,20 +26,13 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.nesl.ntpclasses.GoodClock;
-import com.nesl.ntpsense.R;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
@@ -61,6 +47,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
     private Sensor mGyro;
     private Sensor mLight;
     private Sensor mMagnet;
+    private Sensor mPressure;
 
     //GPS Stuff
     private FusedLocationProviderClient fusedLocationClient;
@@ -82,16 +69,11 @@ public class SensorRecordService extends Service  implements SensorEventListener
     protected GoodClock goodClock;
     private String timeZone = "America/Los_Angeles";
 
+    // Indicator if GoodClock has received an initial fix. Because this was designed for a 15-20 minute trial, we don't care about too much drift.
+    private boolean goodClockInitialFix = false;
+
     //End NTP Time Stuff
 
-
-
-    // Audio Stuff
-    protected boolean isAudioRecording = false;
-    protected final int RECORD_AUDIO_PERMISSION_CODE = 1;
-    private RecordSoundRunnable rsRunnable;
-    protected OutputStream audioOSStream;
-    private AudioRecord recorder;
 
 
     //IMU File stuff
@@ -106,15 +88,22 @@ public class SensorRecordService extends Service  implements SensorEventListener
     private OutputStream ambientLightOSStream;
     private OutputStreamWriter ambientLightOS;
 
+    //Ambient Pressure File Stuff
+    private OutputStream ambientPressureOSStream;
+    private OutputStreamWriter ambientPressureOS;
 
     // Indicator for whether app is recording all checked modalities or not
     private volatile boolean isRecording = false;
 
+
     // Checkbox status
-    private Boolean cb_audioIsChecked = false;
+    private Boolean cb_pressureIsChecked = false;
     private Boolean cb_imuIsChecked = false;
-    private Boolean cb_ambientIsChecked = false;
+    private Boolean cb_AmbientLightIsChecked = false;
     private Boolean cb_gpsIsChecked = false;
+
+
+
 
     public SensorRecordService() {
     }
@@ -135,10 +124,20 @@ public class SensorRecordService extends Service  implements SensorEventListener
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String input = intent.getStringExtra("inputExtra");
+        createNotificationChannel();
+        Intent notificationIntent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this,
+                0, notificationIntent, 0);
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Foreground Service")
+                .setContentText(input)
+                .setContentIntent(pendingIntent)
+                .build();
+        startForeground(1, notification);
         //cb_ambient.setEnabled(false);
-        cb_ambientIsChecked = intent.getExtras().getBoolean("cb_ambient");
+        cb_AmbientLightIsChecked = intent.getExtras().getBoolean("cb_ambientLight");
         cb_imuIsChecked = intent.getExtras().getBoolean("cb_imu");
-        cb_audioIsChecked= intent.getExtras().getBoolean("cb_audio");
+        cb_pressureIsChecked= intent.getExtras().getBoolean("cb_pressure");
         cb_gpsIsChecked = intent.getExtras().getBoolean("cb_gps");
 
         // Get default sensors
@@ -147,14 +146,23 @@ public class SensorRecordService extends Service  implements SensorEventListener
         mGyro = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         mLight = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
         mMagnet = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        mPressure = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        if(cb_imuIsChecked){
+            sensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_GAME);
+            sensorManager.registerListener(this, mGyro, SensorManager.SENSOR_DELAY_GAME);
+            sensorManager.registerListener(this, mMagnet, SensorManager.SENSOR_DELAY_GAME);
 
-        sensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_GAME);
-        sensorManager.registerListener(this, mGyro, SensorManager.SENSOR_DELAY_GAME);
-        sensorManager.registerListener(this, mLight, SensorManager.SENSOR_DELAY_GAME);
-        sensorManager.registerListener(this, mMagnet, SensorManager.SENSOR_DELAY_GAME);
+        }
+        if(cb_AmbientLightIsChecked){
 
-        //do heavy work on a background thread
+            sensorManager.registerListener(this, mLight, SensorManager.SENSOR_DELAY_GAME);
+        }
+        if(cb_pressureIsChecked){
+            sensorManager.registerListener(this, mPressure, SensorManager.SENSOR_DELAY_GAME);
+
+        }
+
 
         //NTP Stuff
         //Starting the GoodClock library
@@ -173,8 +181,8 @@ public class SensorRecordService extends Service  implements SensorEventListener
 
         return START_STICKY;
     }
-    private void startRecording()
-    {
+
+    private void createSensorFiles(){
         //startRecording();
         Long now = goodClock.Now();
         Date date = new Date(now);
@@ -218,7 +226,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 String accelFilePath = pathChild + "/" + accelFileName;
                 accelOSStream = new FileOutputStream(accelFilePath + ".csv");
                 accelOS = new OutputStreamWriter(accelOSStream);
-                Log.i("DEBUG Stuff","Accel file created****");
+                //Log.i("DEBUG Stuff","Accel file created****");
                 String gyroFilePath = pathChild + "/" + gyroFileName;
                 gyroOSStream = new FileOutputStream(gyroFilePath + ".csv");
                 gyroOS = new OutputStreamWriter(gyroOSStream);
@@ -233,15 +241,33 @@ public class SensorRecordService extends Service  implements SensorEventListener
             }
 
         }
-        if(cb_audioIsChecked) {
-            String fileName = "audioData";
-            isAudioRecording = true;
-            rsRunnable = new RecordSoundRunnable(fileName);
-            new Thread(rsRunnable).start();
+        if(cb_pressureIsChecked) {
+            try {
+
+                /** creates file path */
+                String ambientPressureFileName = "ambientPressureData-" + dateFormatted;
+
+                /** creates new folders in storage if they do not exist */
+                File pathParent = new File( Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
+                if (!pathParent.exists())
+                    pathParent.mkdir();
+                File pathChild = new File(pathParent + "/ambientPressureData/");
+                if (!pathChild.exists())
+                    pathChild.mkdir();
+
+                /** creates file paths */
+                String ambientPressureFilePath = pathChild + "/" + ambientPressureFileName;
+                ambientPressureOSStream = new FileOutputStream(ambientPressureFilePath + ".csv");
+                ambientPressureOS = new OutputStreamWriter(ambientPressureOSStream);
+
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
         }
 
-        if(cb_ambientIsChecked){
+        if(cb_AmbientLightIsChecked){
             try {
 
                 /** creates file path */
@@ -321,6 +347,12 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 e.printStackTrace();
             }
         }
+    }
+
+
+    private void startRecording()
+    {
+        createSensorFiles();
         isRecording= true;
     }
 
@@ -344,10 +376,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
 
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Toast.makeText(this, "recording done", Toast.LENGTH_SHORT).show();
+    private void closeSensorFiles(){
         if(cb_imuIsChecked){
             try {
                 accelOS.flush();
@@ -361,20 +390,15 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 e.printStackTrace();
             }
         }
-        if(cb_audioIsChecked){
+        if(cb_pressureIsChecked){
             try{
-                isAudioRecording = false;
-                recorder.stop();
-                recorder.release();
-                recorder = null;
-                audioOSStream.flush();
-                audioOSStream.close();
-            }catch(IOException e)
-            {
+                ambientPressureOS.flush();
+                ambientPressureOS.close();
+            }catch(IOException e){
                 e.printStackTrace();
             }
         }
-        if(cb_ambientIsChecked) {
+        if(cb_AmbientLightIsChecked) {
             try{
                 ambientLightOS.flush();
                 ambientLightOS.close();
@@ -382,10 +406,18 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 e.printStackTrace();
             }
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Toast.makeText(this, "recording done", Toast.LENGTH_SHORT).show();
+        closeSensorFiles();
         if(cb_gpsIsChecked)
         {
             stopLocationUpdates();
         }
+        isRecording = false;
     }
 
     @Override
@@ -398,10 +430,19 @@ public class SensorRecordService extends Service  implements SensorEventListener
         // The light sensor returns a single value.
         // Many sensors return 3 values, one for each axis.
 
+        // This is only to raise a flag if we got our initial GoodClock fix.
+        if(goodClock.SntpSuceeded){
+            goodClockInitialFix = true;
+        }
+
+        Log.i("OnSensorChanged", "Got value...");
+
         if(isRecording) {
+            Log.i("OnSensorChanged", "Still recording...");
             switch(event.sensor.getType()) {
                 case Sensor.TYPE_ACCELEROMETER:
-                    if(cb_imuIsChecked && goodClock.SntpSuceeded) {
+                   // Log.i("OnSensorChanged", "Got Accel...");
+                    if(cb_imuIsChecked && goodClockInitialFix) {
                         // In this example, alpha is calculated as t / (t + dT),
                         // where t is the low-pass filter's time-constant and
                         // dT is the event delivery rate
@@ -412,14 +453,20 @@ public class SensorRecordService extends Service  implements SensorEventListener
                         formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
                         String dateFormatted = formatter.format(date);
                         try {
+                            Log.i("OnSensorChanged", "Accel: "+ dateFormatted + ", " + accel );
                             accelOS.append(dateFormatted + ", " + accel + "\n");
                         } catch (IOException e) {
+                            Log.i("OnSensorChanged", "There was an error writing accel");
                             e.printStackTrace();
+                            closeSensorFiles();
+                            createSensorFiles();
                         }
                     }
                     break;
                 case Sensor.TYPE_MAGNETIC_FIELD:
-                    if(cb_imuIsChecked && goodClock.SntpSuceeded) {
+
+                    Log.i("OnSensorChanged", "Got Mag...");
+                    if(cb_imuIsChecked && goodClockInitialFix) {
                         // In this example, alpha is calculated as t / (t + dT),
                         // where t is the low-pass filter's time-constant and
                         // dT is the event delivery rate
@@ -430,14 +477,21 @@ public class SensorRecordService extends Service  implements SensorEventListener
                         formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
                         String dateFormatted = formatter.format(date);
                         try {
+                            Log.i("OnSensorChanged", "Mag: "+ dateFormatted + ", " + magnet );
                             magnetOS.append(dateFormatted + ", " + magnet + "\n");
                         } catch (IOException e) {
+                            Log.i("OnSensorChanged", "There was an error writing magnet");
                             e.printStackTrace();
+                            closeSensorFiles();
+                            createSensorFiles();
                         }
                     }
                     break;
                 case Sensor.TYPE_GYROSCOPE:
-                    if(cb_imuIsChecked && goodClock.SntpSuceeded) {
+
+                    Log.i("OnSensorChanged", "Got Gyro...");
+                    if(cb_imuIsChecked && goodClockInitialFix) {
+
                         // In this example, alpha is calculated as t / (t + dT),
                         // where t is the low-pass filter's time-constant and
                         // dT is the event delivery rate
@@ -448,14 +502,22 @@ public class SensorRecordService extends Service  implements SensorEventListener
                         formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
                         String dateFormatted = formatter.format(date);
                         try {
+                            Log.i("OnSensorChanged", "Gyro: "+ dateFormatted + ", " + gyro );
                             gyroOS.append(dateFormatted + ", " + gyro + "\n");
+
                         } catch (IOException e) {
+
+                            Log.i("OnSensorChanged", "There was an error writing gyro");
                             e.printStackTrace();
+                            closeSensorFiles();
+                            createSensorFiles();
                         }
                     }
                     break;
                 case Sensor.TYPE_LIGHT:
-                    if(cb_ambientIsChecked && goodClock.SntpSuceeded){
+
+                    Log.i("OnSensorChanged", "Got Ambient Light...");
+                    if(cb_AmbientLightIsChecked && goodClockInitialFix){
                         // In this example, alpha is calculated as t / (t + dT),
                         // where t is the low-pass filter's time-constant and
                         // dT is the event delivery rate
@@ -466,12 +528,45 @@ public class SensorRecordService extends Service  implements SensorEventListener
                         formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
                         String dateFormatted = formatter.format(date);
                         try {
+                            Log.i("OnSensorChanged", "ambient: "+ dateFormatted + ", " + ambientLight );
                             ambientLightOS.append(dateFormatted + ", " + ambientLight + "\n");
                         } catch (IOException e) {
+                            Log.i("OnSensorChanged", "There was an error writing ambient");
                             e.printStackTrace();
+                            closeSensorFiles();
+                            createSensorFiles();
                         }
                     }
 
+                    break;
+                case Sensor.TYPE_PRESSURE:
+
+                    Log.i("OnSensorChanged", "Got Ambient Pressure...");
+                    if(cb_pressureIsChecked && goodClockInitialFix){
+                        // In this example, alpha is calculated as t / (t + dT),
+                        // where t is the low-pass filter's time-constant and
+                        // dT is the event delivery rate
+                        String pressure = String.valueOf(event.values[0]);
+                        Long now = goodClock.Now();
+                        Date date = new Date(now);
+                        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
+                        formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
+                        String dateFormatted = formatter.format(date);
+                        try {
+                            Log.i("OnSensorChanged", "ambient pressure: "+ dateFormatted + ", " + pressure );
+                            ambientPressureOS.append(dateFormatted + ", " + pressure + "\n");
+                        } catch (IOException e) {
+                            Log.i("OnSensorChanged", "There was an error writing ambient");
+                            e.printStackTrace();
+                            closeSensorFiles();
+                            createSensorFiles();
+                        }
+                    }
+
+                    break;
+                default:
+
+                    Log.i("OnSensorChanged", "Got Unknown Sensor!...");
                     break;
             }
 
@@ -481,229 +576,6 @@ public class SensorRecordService extends Service  implements SensorEventListener
         // Do something with this sensor value.
     }
 
-    /**
-     * CLASS: records audio
-     */
-    class RecordSoundRunnable implements Runnable {
-
-        /**
-         * MEMBER VARIABLES
-         */
-        private static final int RECORDER_SOURCE = MediaRecorder.AudioSource.UNPROCESSED;
-        private static final int RECORDER_SAMPLERATE = 44100;
-        private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
-        private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
-        private int BufferElementsToRec = 1024;  // want to play 2048 (2K) since 2 bytes we use only 1024
-        private int BytesPerElement = 2;        // 2 bytes in 16bit format
-
-        private String m_fileName;
-
-        /**
-         * CONSTRUCTOR
-         */
-        RecordSoundRunnable(String fileName) {
-
-            this.m_fileName = fileName;
-            int bufferSize = AudioRecord.getMinBufferSize(
-                    RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
-            recorder = new AudioRecord(
-                    RECORDER_SOURCE, RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING, bufferSize);
-        }
-
-        /**
-         * RUN
-         */
-        @Override
-        public void run() {
-
-            /** initial buffer of 5 secs
-             try {
-             Thread.sleep(1000);
-             } catch (Exception e) {
-             e.printStackTrace();
-             }*/
-
-            try {
-                //startRecording();
-                Long now = goodClock.Now();
-                Date date = new Date(now);
-                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
-                formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
-                String dateFormatted = formatter.format(date);
-
-                /** creates new folders in storage if they do not exist */
-                File pathParent = new File( Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
-                if (!pathParent.exists())
-                    pathParent.mkdir();
-                File pathChild = new File(pathParent + "/audioData/");
-                if (!pathChild.exists())
-                    pathChild.mkdir();
-
-
-
-                /** creates file path */
-                String fileName = getFileName();
-                String filePath = pathChild + "/" + fileName + "-" + dateFormatted;
-                audioOSStream = new FileOutputStream(filePath + ".pcm");
-
-                /** unknown */
-                short soundData[] = new short[BufferElementsToRec];
-
-                recorder.startRecording();
-                while (isAudioRecording) {
-                    recorder.read(soundData, 0, BufferElementsToRec);
-                    // writes the data to file from buffer
-                    byte bufferData[] = shortToByte(soundData);
-                    // stores the voice buffer
-                    audioOSStream.write(bufferData, 0, BufferElementsToRec * BytesPerElement);
-
-                }
-
-                /** stops recording */
-
-
-                /** buffer of 1 sec in between taking samples */
-                //Thread.sleep(1000);
-
-                /** converts pcm file to wav
-                 File f1 = new File(filePath + ".pcm"); // The location of your PCM file
-                 File f2 = new File(filePath + ".wav"); // The location where you want your WAV file
-                 try {
-                 rawToWave(f1, f2);
-                 f1.delete();
-                 } catch (IOException e) {
-                 e.printStackTrace();
-                 f1.delete();
-                 }
-                 */
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-
-
-            /** cleanup */
-            recorder.release();
-            recorder = null;
-        }
-
-        /** MEMBER FUNCTIONS */
-
-        /**
-         * names file
-         */
-        private String getFileName() {
-
-            return (m_fileName );
-        }
-
-
-        /**
-         * converts short to byte
-         */
-        private byte[] shortToByte(short[] soundData) {
-            int shortArrSize = soundData.length;
-            byte[] bytes = new byte[shortArrSize * 2];
-            for (int i = 0; i < shortArrSize; i++) {
-                bytes[i * 2] = (byte) (soundData[i] & 0x00FF);
-                bytes[(i * 2) + 1] = (byte) (soundData[i] >> 8);
-                soundData[i] = 0;
-            }
-            return bytes;
-        }
-
-        /**
-         * PCM to WAV
-         */
-        private void rawToWave(final File rawFile, final File waveFile) throws IOException {
-
-            byte[] rawData = new byte[(int) rawFile.length()];
-            DataInputStream input = null;
-            try {
-                input = new DataInputStream(new FileInputStream(rawFile));
-                input.read(rawData);
-            } finally {
-                if (input != null) {
-                    input.close();
-                }
-            }
-
-            DataOutputStream output = null;
-            try {
-                output = new DataOutputStream(new FileOutputStream(waveFile));
-                // WAVE header
-                // see http://ccrma.stanford.edu/courses/422/projects/WaveFormat/
-                writeString(output, "RIFF"); // chunk id
-                writeInt(output, 36 + rawData.length); // chunk size
-                writeString(output, "WAVE"); // format
-                writeString(output, "fmt "); // subchunk 1 id
-                writeInt(output, 16); // subchunk 1 size
-                writeShort(output, (short) 1); // audio format (1 = PCM)
-                writeShort(output, (short) 1); // number of channels
-                writeInt(output, 44100); // sample rate
-                writeInt(output, RECORDER_SAMPLERATE * 2); // byte rate
-                writeShort(output, (short) 2); // block align
-                writeShort(output, (short) 16); // bits per sample
-                writeString(output, "data"); // subchunk 2 id
-                writeInt(output, rawData.length); // subchunk 2 size
-                // Audio data (conversion big endian -> little endian)
-                short[] shorts = new short[rawData.length / 2];
-                ByteBuffer.wrap(rawData).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(shorts);
-                ByteBuffer bytes = ByteBuffer.allocate(shorts.length * 2);
-                for (short s : shorts) {
-                    bytes.putShort(s);
-                }
-
-                output.write(fullyReadFileToBytes(rawFile));
-            } finally {
-                if (output != null) {
-                    output.close();
-                }
-            }
-        }
-
-        byte[] fullyReadFileToBytes(File f) throws IOException {
-            int size = (int) f.length();
-            byte bytes[] = new byte[size];
-            byte tmpBuff[] = new byte[size];
-            FileInputStream fis = new FileInputStream(f);
-            try {
-
-                int read = fis.read(bytes, 0, size);
-                if (read < size) {
-                    int remain = size - read;
-                    while (remain > 0) {
-                        read = fis.read(tmpBuff, 0, remain);
-                        System.arraycopy(tmpBuff, 0, bytes, size - remain, read);
-                        remain -= read;
-                    }
-                }
-            } catch (IOException e) {
-                throw e;
-            } finally {
-                fis.close();
-            }
-
-            return bytes;
-        }
-
-        private void writeInt(final DataOutputStream output, final int value) throws IOException {
-            output.write(value >> 0);
-            output.write(value >> 8);
-            output.write(value >> 16);
-            output.write(value >> 24);
-        }
-
-        private void writeShort(final DataOutputStream output, final short value) throws IOException {
-            output.write(value >> 0);
-            output.write(value >> 8);
-        }
-
-        private void writeString(final DataOutputStream output, final String value) throws IOException {
-            for (int i = 0; i < value.length(); i++) {
-                output.write(value.charAt(i));
-            }
-        }
 
         /* Checks if external storage is available for read and write */
         public boolean isExternalStorageWritable() {
@@ -724,5 +596,17 @@ public class SensorRecordService extends Service  implements SensorEventListener
             return false;
         }
 
+
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel serviceChannel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "Foreground Service Channel",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(serviceChannel);
+        }
     }
 }

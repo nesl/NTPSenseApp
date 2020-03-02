@@ -6,49 +6,26 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
-import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.location.Location;
-import android.media.AudioFormat;
-import android.media.AudioRecord;
-import android.media.MediaRecorder;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-import com.nesl.ntpclasses.GoodClock;
 import com.nesl.ntpsense.R;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TimeZone;
+
 
 public class MainActivity extends AppCompatActivity  {
 
@@ -85,7 +62,7 @@ public class MainActivity extends AppCompatActivity  {
     private ProgressBar pb_Record;
     private Button bt_Record;
     private TextView tv_recordUpdate;
-    private CheckBox cb_audio;
+    private CheckBox cb_pressure;
     private CheckBox cb_imu;
     private CheckBox cb_ambient;
     private CheckBox cb_gps;
@@ -105,7 +82,7 @@ public class MainActivity extends AppCompatActivity  {
         pb_Record.setVisibility(View.INVISIBLE);
         tv_recordUpdate = findViewById(R.id.textViewRecordUpdate);
         tv_recordUpdate.setVisibility(View.INVISIBLE);
-        cb_audio = findViewById(R.id.checkBoxAudio);
+        cb_pressure = findViewById(R.id.checkBoxPressure);
         //cb_audio.setEnabled(false);
         cb_imu = findViewById(R.id.checkBoxIMU);
         cb_ambient = findViewById(R.id.checkBoxAmbient);
@@ -124,7 +101,7 @@ public class MainActivity extends AppCompatActivity  {
             bt_Record.setBackgroundColor(Color.RED);
             cb_imu.setEnabled(false);
             cb_ambient.setEnabled(false);
-            cb_audio.setEnabled(false);
+            cb_pressure.setEnabled(false);
             cb_gps.setEnabled(false);
             pb_Record.setVisibility(View.VISIBLE);
             tv_recordUpdate.setVisibility(View.VISIBLE);
@@ -173,7 +150,7 @@ public class MainActivity extends AppCompatActivity  {
         }
 
         if(!isRecording) {
-            if(cb_imu.isChecked() || cb_audio.isChecked() || cb_ambient.isChecked() || cb_gps.isChecked()) {
+            if(cb_imu.isChecked() || cb_pressure.isChecked() || cb_ambient.isChecked() || cb_gps.isChecked()) {
 
                 //startService
                 bt_Record.setText("Stop Recording");
@@ -181,17 +158,18 @@ public class MainActivity extends AppCompatActivity  {
                 bt_Record.setBackgroundColor(Color.RED);
                 cb_imu.setEnabled(false);
                 cb_ambient.setEnabled(false);
-                cb_audio.setEnabled(false);
+                cb_pressure.setEnabled(false);
                 cb_gps.setEnabled(false);
                 pb_Record.setVisibility(View.VISIBLE);
                 tv_recordUpdate.setVisibility(View.VISIBLE);
                 isRecording = true;
                 Intent intent = new Intent(MainActivity.this, SensorRecordService.class);
-                intent.putExtra("cb_ambient", cb_ambient.isChecked());
+                intent.putExtra("cb_ambientLight", cb_ambient.isChecked());
                 intent.putExtra("cb_imu", cb_imu.isChecked());
-                intent.putExtra("cb_audio", cb_audio.isChecked());
+                intent.putExtra("cb_pressure", cb_pressure.isChecked());
                 intent.putExtra("cb_gps", cb_gps.isChecked());
-                startService(intent);
+                ContextCompat.startForegroundService(this, intent);
+                //startService(intent);
             }
         }else
         {
@@ -203,7 +181,7 @@ public class MainActivity extends AppCompatActivity  {
             tv_recordUpdate.setVisibility(View.INVISIBLE);
             cb_imu.setEnabled(true);
             cb_ambient.setEnabled(true);
-            cb_audio.setEnabled(true);
+            cb_pressure.setEnabled(true);
             cb_gps.setEnabled(true);
             Intent intent = new Intent(MainActivity.this, SensorRecordService.class);
             stopService(intent);
@@ -264,6 +242,7 @@ public class MainActivity extends AppCompatActivity  {
         boolean permissionGranted = false;
 
         switch (requestCode) {
+            /*
             case RECORD_AUDIO_PERMISSION_CODE: {
                 if (grantResults.length > 0) {
                     for (int i : grantResults) {
@@ -280,8 +259,16 @@ public class MainActivity extends AppCompatActivity  {
 
                 break;
             }
+
+             */
+
+            default:
+                break;
         }
     }
+
+
+
 
 
 
