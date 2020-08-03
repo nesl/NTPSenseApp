@@ -105,6 +105,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
     private Boolean cb_imuIsChecked = false;
     private Boolean cb_AmbientLightIsChecked = false;
     private Boolean cb_gpsIsChecked = false;
+    private Boolean cb_timeDriftIsChecked = false;
 
 
 
@@ -148,6 +149,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
         cb_imuIsChecked = intent.getExtras().getBoolean("cb_imu");
         cb_pressureIsChecked= intent.getExtras().getBoolean("cb_pressure");
         cb_gpsIsChecked = intent.getExtras().getBoolean("cb_gps");
+        cb_timeDriftIsChecked = intent.getExtras().getBoolean("cb_timeDrift");
 
         // Get default sensors
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -203,7 +205,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
         //NTP Stuff
         //Starting the GoodClock library
         try{
-            goodClock = new GoodClock();
+            goodClock = new GoodClock(cb_timeDriftIsChecked);
             goodClock.start();
         }
         catch (Exception e)
@@ -383,6 +385,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 e.printStackTrace();
             }
         }
+
     }
 
 

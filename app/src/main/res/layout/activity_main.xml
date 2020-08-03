@@ -11,14 +11,26 @@
         android:id="@+id/checkBoxAmbient"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="30dp"
         android:text="Ambient Light Data"
         android:textColor="#F2A900"
         android:textSize="18sp"
         android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@+id/buttonRecord"
+        app:layout_constraintBottom_toTopOf="@id/checkBoxDriftRecorder"
         app:layout_constraintStart_toStartOf="@+id/checkBoxGPS"
         app:layout_constraintTop_toBottomOf="@+id/checkBoxGPS" />
+
+    <CheckBox
+        android:id="@+id/checkBoxDriftRecorder"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="30dp"
+        android:text="Time Drift"
+        android:textColor="#F2A900"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/buttonRecord"
+        app:layout_constraintStart_toStartOf="@id/checkBoxAmbient"
+        app:layout_constraintTop_toBottomOf="@id/checkBoxAmbient" />
 
     <CheckBox
         android:id="@+id/checkBoxGPS"

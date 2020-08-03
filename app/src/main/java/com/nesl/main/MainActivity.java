@@ -66,6 +66,7 @@ public class MainActivity extends AppCompatActivity  {
     private CheckBox cb_imu;
     private CheckBox cb_ambient;
     private CheckBox cb_gps;
+    private CheckBox cb_timeDrift;
 
 
 
@@ -87,6 +88,7 @@ public class MainActivity extends AppCompatActivity  {
         cb_imu = findViewById(R.id.checkBoxIMU);
         cb_ambient = findViewById(R.id.checkBoxAmbient);
         cb_gps = findViewById(R.id.checkBoxGPS);
+        cb_timeDrift = findViewById(R.id.checkBoxDriftRecorder);
 
     }
 
@@ -103,6 +105,7 @@ public class MainActivity extends AppCompatActivity  {
             cb_ambient.setEnabled(false);
             cb_pressure.setEnabled(false);
             cb_gps.setEnabled(false);
+            cb_timeDrift.setEnabled(false);
             pb_Record.setVisibility(View.VISIBLE);
             tv_recordUpdate.setVisibility(View.VISIBLE);
         }
@@ -150,7 +153,7 @@ public class MainActivity extends AppCompatActivity  {
         }
 
         if(!isRecording) {
-            if(cb_imu.isChecked() || cb_pressure.isChecked() || cb_ambient.isChecked() || cb_gps.isChecked()) {
+            if(cb_imu.isChecked() || cb_pressure.isChecked() || cb_ambient.isChecked() || cb_gps.isChecked() || cb_timeDrift.isChecked()) {
 
                 //startService
                 bt_Record.setText("Stop Recording");
@@ -160,6 +163,7 @@ public class MainActivity extends AppCompatActivity  {
                 cb_ambient.setEnabled(false);
                 cb_pressure.setEnabled(false);
                 cb_gps.setEnabled(false);
+                cb_timeDrift.setEnabled(false);
                 pb_Record.setVisibility(View.VISIBLE);
                 tv_recordUpdate.setVisibility(View.VISIBLE);
                 isRecording = true;
@@ -168,6 +172,7 @@ public class MainActivity extends AppCompatActivity  {
                 intent.putExtra("cb_imu", cb_imu.isChecked());
                 intent.putExtra("cb_pressure", cb_pressure.isChecked());
                 intent.putExtra("cb_gps", cb_gps.isChecked());
+                intent.putExtra( "cb_timeDrift", cb_timeDrift.isChecked());
                 ContextCompat.startForegroundService(this, intent);
                 //startService(intent);
             }
@@ -183,6 +188,7 @@ public class MainActivity extends AppCompatActivity  {
             cb_ambient.setEnabled(true);
             cb_pressure.setEnabled(true);
             cb_gps.setEnabled(true);
+            cb_timeDrift.setEnabled(true);
             Intent intent = new Intent(MainActivity.this, SensorRecordService.class);
             stopService(intent);
         }
