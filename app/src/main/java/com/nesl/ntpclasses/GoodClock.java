@@ -6,61 +6,79 @@ Email: sandha.iitr@gmail.com
 
 package com.nesl.ntpclasses;
 
+import android.os.Environment;
 import android.os.SystemClock;
+import android.util.Log;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 
 
 public class GoodClock {
 
 
-    long period = 15*60*1000;//Default update every 15  minutes
+    long period = 1 * 30 * 1000;//Default update every 15  minutes
 
 
     SntpDsense client = null;
     String ntpHost = "time1.ucla.edu";//17.253.26.253
+    private String timeZone = "America/Los_Angeles";
     int timeout = 3000;
 
 
     public boolean SntpSuceeded;
     Thread NTP_update;
-    boolean NTP_thread_running=false;
+    boolean NTP_thread_running = false;
 
-    boolean use_drift_correction =false;
+    boolean use_drift_correction = false;
 
     //stores the drift in the ntp_clockoffset
-    double drift =0.0;
+    double drift = 0.0;
 
     //these are affected when system time jumps
     double first_ntp_offset = 0;
-    long first_ntp_monotonic_time=0;
-    long first_ntp_sys_time=0;
+    long first_ntp_monotonic_time = 0;
+    long first_ntp_sys_time = 0;
 
     long curr_ntp_offset = 0;
-    long curr_ntp_monotonic_time=0;
-    long curr_ntp_sys_time=0;
+    long curr_ntp_monotonic_time = 0;
+    long curr_ntp_sys_time = 0;
 
     //below numbers are used in the drift computation
-    double total_ntp_offset_run =0.0;
-    double total_ntp_monotonic_time_run =0.0;
-    double total_ntp_offset_change =0.0;
-    double total_ntp_monotonic_time_passed=0.0;
+    double total_ntp_offset_run = 0.0;
+    double total_ntp_monotonic_time_run = 0.0;
+    double total_ntp_offset_change = 0.0;
+    double total_ntp_monotonic_time_passed = 0.0;
 
-    boolean is_first =true; //stores whether it is a first NTP update
+    //Ambient Light File Stuff
+    private OutputStream driftRecordOSStream;
+    private OutputStreamWriter driftRecordOS;
+
+    boolean is_first = true; //stores whether it is a first NTP update
+
+    //boolean to record to file
+    boolean recordDriftToFile;
 
     /*
     1) Initializing SntpDsense client
     2) Initialize SNTP (NTP) has not been done
      */
-    public GoodClock() {
+    public GoodClock(Boolean recordDrift) {
 
-        try{
+        try {
             client = new SntpDsense();
-            SntpSuceeded=false;
-            NTP_update=null;
-
+            SntpSuceeded = false;
+            NTP_update = null;
+            this.recordDriftToFile = recordDrift;
             // period = 10000;//how often to do the NTP update
-        }
-        catch (Exception e)
-        {
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -70,34 +88,35 @@ public class GoodClock {
     /*
     Create a thread to periodically update the SntpDsense client ntp update function
      */
-    public void start()
-    {
-        try{
+    public void start() {
+        try {
             //start thread only if not running
-            if(NTP_update==null) {
-                NTP_thread_running=true;
+            if (NTP_update == null) {
+                NTP_thread_running = true;
                 NTP_update = new Thread(thread_periodic_update_NTP);
                 NTP_update.start();
 
             }
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
 
-
     }//end start
 
-    public void stop()
-    {
-        try{
-            NTP_thread_running=false;
+    public void stop() {
+        try {
+            NTP_thread_running = false;
             NTP_update.stop();
-        }
-        catch (Exception e)
-        {
+            if (recordDriftToFile) {
+                try {
+                    driftRecordOS.flush();
+                    driftRecordOS.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -107,6 +126,25 @@ public class GoodClock {
     /*
     1) Stores the NTP offset of the system time and updates the offset periodically
      */
+
+    public void appendDriftToFile() {
+        long elapsed_time_since_last_ntp = SystemClock.elapsedRealtime() - curr_ntp_monotonic_time;
+        long drift_correction = (long)((drift)*(double)(elapsed_time_since_last_ntp));
+        try {
+            driftRecordOS.append( "" + Now()+","+curr_ntp_offset + ", " + drift_correction + ", " + curr_ntp_offset + ", " + curr_ntp_sys_time + ", " + elapsed_time_since_last_ntp + "\n");
+            driftRecordOS.flush();
+            Log.i("AppendingDriftToFile", "" + curr_ntp_offset + ", " + drift_correction + ", " + curr_ntp_offset + ", " + curr_ntp_sys_time + ", " + elapsed_time_since_last_ntp);
+
+        }
+        catch(IOException e)
+        {
+            Log.e("AppendingDriftToFile", "Couldn't do it!");
+
+            e.printStackTrace();
+        }
+    }
+
+
     public long currentTimeMillis()
     {
 
@@ -209,6 +247,29 @@ public class GoodClock {
                             first_ntp_monotonic_time = curr_ntp_monotonic_time;
                             first_ntp_offset= curr_ntp_offset;
                             first_ntp_sys_time=curr_ntp_sys_time;
+                            if(recordDriftToFile) {
+                                long now = Now();
+                                Date date = new Date(now);
+                                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
+                                formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
+                                String dateFormatted = formatter.format(date);
+                                /** creates file path */
+                                String driftRecordFileName = "timeDriftRecord-" + dateFormatted;
+
+                                /** creates new folders in storage if they do not exist */
+                                File pathParent = new File(Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
+                                if (!pathParent.exists())
+                                    pathParent.mkdir();
+                                File pathChild = new File(pathParent + "/timeDriftRecords/");
+                                if (!pathChild.exists())
+                                    pathChild.mkdir();
+
+                                /** creates file paths */
+                                String driftRecordFilePath = pathChild + "/" + driftRecordFileName;
+                                driftRecordOSStream = new FileOutputStream(driftRecordFilePath + ".csv");
+                                driftRecordOS = new OutputStreamWriter(driftRecordOSStream);
+                                appendDriftToFile();
+                            }
 
                         }
 
@@ -291,7 +352,9 @@ public class GoodClock {
                         }//end else
 
                     }
-
+                    if(recordDriftToFile){
+                        appendDriftToFile();
+                    }
                     Thread.sleep(period);
 
                 } catch (Exception e) {
