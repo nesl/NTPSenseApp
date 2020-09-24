@@ -50,7 +50,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
-public class SensorRecordService extends Service  implements SensorEventListener {
+public class SensorRecordService extends Service implements SensorEventListener {
 
     public static final String CHANNEL_ID = "ForegroundServiceChannel";
     /*
@@ -85,7 +85,6 @@ public class SensorRecordService extends Service  implements SensorEventListener
     //End NTP Time Stuff
 
 
-
     // Audio Stuff
     protected boolean isAudioRecording = false;
     protected final int RECORD_AUDIO_PERMISSION_CODE = 1;
@@ -95,11 +94,11 @@ public class SensorRecordService extends Service  implements SensorEventListener
 
 
     //IMU File stuff
-    private  OutputStream accelOSStream;
+    private OutputStream accelOSStream;
     private OutputStreamWriter accelOS;
-    private  OutputStream gyroOSStream;
+    private OutputStream gyroOSStream;
     private OutputStreamWriter gyroOS;
-    private  OutputStream magnetOSStream;
+    private OutputStream magnetOSStream;
     private OutputStreamWriter magnetOS;
 
     //Ambient Light File Stuff
@@ -139,7 +138,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
         //cb_ambient.setEnabled(false);
         cb_ambientIsChecked = intent.getExtras().getBoolean("cb_ambient");
         cb_imuIsChecked = intent.getExtras().getBoolean("cb_imu");
-        cb_audioIsChecked= intent.getExtras().getBoolean("cb_audio");
+        cb_audioIsChecked = intent.getExtras().getBoolean("cb_audio");
         cb_gpsIsChecked = intent.getExtras().getBoolean("cb_gps");
         cb_timeDriftIsChecked = intent.getExtras().getBoolean("cb_timeDrift");
 
@@ -160,12 +159,10 @@ public class SensorRecordService extends Service  implements SensorEventListener
 
         //NTP Stuff
         //Starting the GoodClock library
-        try{
+        try {
             goodClock = new GoodClock(cb_timeDriftIsChecked);
             goodClock.start();
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -175,22 +172,19 @@ public class SensorRecordService extends Service  implements SensorEventListener
 
         return START_STICKY;
     }
-    private void startRecording()
-    {
+
+    private void startRecording() {
         //startRecording();
         Long now = goodClock.Now();
         Date date = new Date(now);
 
 
-        while(date.getYear() < 100)//Make sure we get a year greater than 1970
+        while (date.getYear() < 100)//Make sure we get a year greater than 1970
         {
-            try{
+            try {
 
                 Thread.sleep(500);
-            }
-
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
             now = goodClock.Now();
@@ -209,10 +203,10 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 String magnetFileName = "magnetData-" + dateFormatted;
 
                 /** creates new folders in storage if they do not exist */
-                File pathParent = new File( Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
+                File pathParent = new File(Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
                 if (!pathParent.exists())
                     pathParent.mkdir();
-                File pathChild = new File(pathParent + "/accelData/");
+                File pathChild = new File(pathParent + goodClock.experimentDirectoryName());
                 if (!pathChild.exists())
                     pathChild.mkdir();
 
@@ -220,7 +214,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 String accelFilePath = pathChild + "/" + accelFileName;
                 accelOSStream = new FileOutputStream(accelFilePath + ".csv");
                 accelOS = new OutputStreamWriter(accelOSStream);
-                Log.i("DEBUG Stuff","Accel file created****");
+                Log.i("DEBUG Stuff", "Accel file created****");
                 String gyroFilePath = pathChild + "/" + gyroFileName;
                 gyroOSStream = new FileOutputStream(gyroFilePath + ".csv");
                 gyroOS = new OutputStreamWriter(gyroOSStream);
@@ -229,13 +223,12 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 magnetOS = new OutputStreamWriter(magnetOSStream);
 
 
-
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
         }
-        if(cb_audioIsChecked) {
+        if (cb_audioIsChecked) {
             String fileName = "audioData";
             isAudioRecording = true;
             rsRunnable = new RecordSoundRunnable(fileName);
@@ -243,17 +236,17 @@ public class SensorRecordService extends Service  implements SensorEventListener
 
         }
 
-        if(cb_ambientIsChecked){
+        if (cb_ambientIsChecked) {
             try {
 
                 /** creates file path */
                 String ambientLightFileName = "ambientLightData-" + dateFormatted;
 
                 /** creates new folders in storage if they do not exist */
-                File pathParent = new File( Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
+                File pathParent = new File(Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
                 if (!pathParent.exists())
                     pathParent.mkdir();
-                File pathChild = new File(pathParent + "/ambientLightData/");
+                File pathChild = new File(pathParent + goodClock.experimentDirectoryName());
                 if (!pathChild.exists())
                     pathChild.mkdir();
 
@@ -269,8 +262,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
 
         }
 
-        if(cb_gpsIsChecked)
-        {
+        if (cb_gpsIsChecked) {
             try {
                 //GPS Stuff:
                 /** creates file path */
@@ -280,7 +272,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 File pathParent = new File(Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
                 if (!pathParent.exists())
                     pathParent.mkdir();
-                File pathChild = new File(pathParent + "/gpsData/");
+                File pathChild = new File(pathParent + goodClock.experimentDirectoryName());
                 if (!pathChild.exists())
                     pathChild.mkdir();
                 locationRequest = new LocationRequest();
@@ -301,7 +293,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                             // In this example, alpha is calculated as t / (t + dT),
                             // where t is the low-pass filter's time-constant and
                             // dT is the event delivery rate
-                            String locationStr = "Lat: "+ location.getLatitude()+", Long: " + location.getLongitude();
+                            String locationStr = "Lat: " + location.getLatitude() + ", Long: " + location.getLongitude();
                             Long now = goodClock.Now();
                             Date date = new Date(now);
                             SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
@@ -318,17 +310,26 @@ public class SensorRecordService extends Service  implements SensorEventListener
                     ;
                 };
                 startLocationUpdates();
-            }catch(IOException e)
-            {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        isRecording= true;
+        isRecording = true;
     }
 
 
     private void startLocationUpdates() {
 
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
         fusedLocationClient.requestLocationUpdates(locationRequest,
                 locationCallback,
                 null /* Looper */);
@@ -537,7 +538,7 @@ public class SensorRecordService extends Service  implements SensorEventListener
                 File pathParent = new File( Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
                 if (!pathParent.exists())
                     pathParent.mkdir();
-                File pathChild = new File(pathParent + "/audioData/");
+                File pathChild = new File(pathParent + goodClock.experimentDirectoryName());
                 if (!pathChild.exists())
                     pathChild.mkdir();
 
