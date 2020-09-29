@@ -389,6 +389,10 @@ public class SensorRecordService extends Service implements SensorEventListener 
         {
             stopLocationUpdates();
         }
+        sensorManager.unregisterListener(this, mAccel);
+        sensorManager.unregisterListener(this, mGyro);
+        sensorManager.unregisterListener(this, mLight);
+        sensorManager.unregisterListener(this, mMagnet);
     }
 
     @Override

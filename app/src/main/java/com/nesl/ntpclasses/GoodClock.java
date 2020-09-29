@@ -134,7 +134,29 @@ public class GoodClock {
         long utc0Time = System.currentTimeMillis();
         try {
             if(is_first) {
+                long now = Now();
+                Date date = new Date(now);
+                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
+                formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
+                String dateFormatted = formatter.format(date);
+                /** creates file path */
+                String driftRecordFileName = "timeDriftRecord-" + dateFormatted;
+
+                /** creates new folders in storage if they do not exist */
+                File pathParent = new File(Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
+                if (!pathParent.exists())
+                    pathParent.mkdir();
+                experimentDirectory = "/exp-" + dateFormatted + "/";
+                File pathChild = new File(pathParent + experimentDirectory);
+                if (!pathChild.exists())
+                    pathChild.mkdir();
+
+                /** creates file paths */
+                String driftRecordFilePath = pathChild + "/" + driftRecordFileName;
+                driftRecordOSStream = new FileOutputStream(driftRecordFilePath + ".csv");
+                driftRecordOS = new OutputStreamWriter(driftRecordOSStream);
                 driftRecordOS.append("CurrentTimeStamp, CurrNTPOffset, DriftCorrection, CurrNTPSysTime, CurrNTPMonotonicTime, ElapsedTimeSinceLastNTP, UTC-0 WallClockTime");
+                driftRecordOS.flush();
             }
             driftRecordOS.append( "" + Now()+","+curr_ntp_offset + ", " + drift_correction +  ", " + curr_ntp_sys_time + ", " +curr_ntp_monotonic_time+", "+ elapsed_time_since_last_ntp + ","+ utc0Time+"\n");
             driftRecordOS.flush();
@@ -256,27 +278,7 @@ public class GoodClock {
                             first_ntp_offset= curr_ntp_offset;
                             first_ntp_sys_time=curr_ntp_sys_time;
                             if(recordDriftToFile) {
-                                long now = Now();
-                                Date date = new Date(now);
-                                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
-                                formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
-                                String dateFormatted = formatter.format(date);
-                                /** creates file path */
-                                String driftRecordFileName = "timeDriftRecord-" + dateFormatted;
 
-                                /** creates new folders in storage if they do not exist */
-                                File pathParent = new File(Environment.getExternalStoragePublicDirectory("NTPSense") + "/");
-                                if (!pathParent.exists())
-                                    pathParent.mkdir();
-                                experimentDirectory = "/exp-" + dateFormatted + "/";
-                                File pathChild = new File(pathParent + experimentDirectory);
-                                if (!pathChild.exists())
-                                    pathChild.mkdir();
-
-                                /** creates file paths */
-                                String driftRecordFilePath = pathChild + "/" + driftRecordFileName;
-                                driftRecordOSStream = new FileOutputStream(driftRecordFilePath + ".csv");
-                                driftRecordOS = new OutputStreamWriter(driftRecordOSStream);
                                 appendDriftToFile();
                             }
                             is_first=false;
