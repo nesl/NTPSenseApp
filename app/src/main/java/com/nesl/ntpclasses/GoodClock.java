@@ -107,8 +107,6 @@ public class GoodClock {
 
     public void stop() {
         try {
-            NTP_thread_running = false;
-            NTP_update.stop();
             if (recordDriftToFile) {
                 try {
                     driftRecordOS.flush();
@@ -117,6 +115,9 @@ public class GoodClock {
                     e.printStackTrace();
                 }
             }
+            NTP_thread_running = false;
+            NTP_update.stop();
+
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -1,11 +1,15 @@
 package com.nesl.main;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -19,6 +23,7 @@ import android.location.Location;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.View;
@@ -143,6 +148,7 @@ public class MainActivity extends AppCompatActivity  {
 
 
     //Function for button record click
+    @RequiresApi(api = Build.VERSION_CODES.O)
     public void recordClick(View v) {
         // check if permissions are already granted
         if (ContextCompat.checkSelfPermission( this, Manifest.permission.ACCESS_FINE_LOCATION ) != PackageManager.PERMISSION_GRANTED )
@@ -195,6 +201,7 @@ public class MainActivity extends AppCompatActivity  {
                 intent.putExtra("cb_gps", cb_gps.isChecked());
                 intent.putExtra( "cb_timeDrift", cb_timeDrift.isChecked());
                 startService(intent);
+
             }
         }else
         {
