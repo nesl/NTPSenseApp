@@ -323,7 +323,7 @@ public class SensorRecordService extends Service implements SensorEventListener 
                             // In this example, alpha is calculated as t / (t + dT),
                             // where t is the low-pass filter's time-constant and
                             // dT is the event delivery rate
-                            String locationStr = "Lat: " + location.getLatitude() + ", Long: " + location.getLongitude();
+                            String locationStr = "Lat: " + location.getLatitude() + ", Long: " + location.getLongitude() + ", Altitude: "+location.getAltitude() + ", Bearing: "+location.getBearing()+", Speed: "+location.getSpeed();
                             Long now = goodClock.Now();
                             Date date = new Date(now);
                             SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss-SSS");
